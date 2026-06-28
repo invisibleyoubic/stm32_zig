@@ -6,6 +6,8 @@ const rcc = microzig.chip.peripherals.RCC;
 const i2c = microzig.chip.peripherals.I2C1;
 const flash = microzig.chip.peripherals.FLASH;
 
+var display_buffer: [1024]u8 = @splat(0x00);
+
 pub fn main() !void {
     // setup clock
     flash.ACR.write(
@@ -66,8 +68,6 @@ pub fn main() !void {
         },
     );
 
-    blink(1);
-
     // i2c
     i2c.CR1.modify_one("PE", 0);
     rcc.APB1ENR.modify_one("I2C1EN", 1);
@@ -83,8 +83,18 @@ pub fn main() !void {
 
     init_display();
 
+    fill_display();
+    clear_display();
+
+    for (15..120) |x| {
+        for (32..40) |y| {
+            draw_pixel(@intCast(x), @intCast(y));
+        }
+    }
+    send_buffer(&display_buffer);
+
     while (true) {
-        blink(1);
+        blink(1, 16_000_000);
     }
 }
 
@@ -95,9 +105,8 @@ fn delay(cycles: u32) void {
     }
 }
 
-fn blink(count: u32) void {
+inline fn blink(count: u32, del: u32) void {
     var i: u32 = 0;
-    const del = 16_000_000;
     while (i < count) : (i += 1) {
         gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
         delay(del);
@@ -114,7 +123,7 @@ fn init_display() void {
     while (i2c.SR1.read().ADDR == 0) {}
     _ = i2c.SR2.read();
 
-    const commands = [_]u8{ 0x00, 0x8D, 0x14, 0xAF };
+    const commands = [_]u8{ 0x00, 0x8D, 0x14, 0xAF, 0x20, 0x00, 0x21, 0x00, 127, 0x22, 0x00, 7, 0xA8, 0x38 };
     for (commands) |cmd| {
         while (i2c.SR1.read().TXE == 0) {}
         i2c.DR.write(.{ .DR = cmd });
@@ -127,4 +136,46 @@ fn init_display() void {
         break;
     }
     i2c.CR1.modify_one("STOP", 1);
+}
+
+fn send_buffer(buffer: []const u8) void {
+    i2c.CR1.modify_one("START", 1);
+    while (i2c.SR1.read().START == 0) {}
+
+    i2c.DR.write(.{ .DR = 0x78 });
+    while (i2c.SR1.read().ADDR == 0) {}
+    _ = i2c.SR2.read();
+
+    while (i2c.SR1.read().TXE == 0) {}
+    i2c.DR.write(.{ .DR = 0x40 });
+
+    for (buffer) |data| {
+        while (i2c.SR1.read().TXE == 0) {}
+        i2c.DR.write(.{ .DR = data });
+    }
+
+    while (true) {
+        const sr1 = i2c.SR1.read();
+        if ((sr1.TXE == 0) or (sr1.BTF == 0))
+            continue;
+        break;
+    }
+    i2c.CR1.modify_one("STOP", 1);
+}
+
+fn clear_display() void {
+    display_buffer = @splat(0x00);
+    send_buffer(&display_buffer);
+}
+
+fn fill_display() void {
+    display_buffer = @splat(0xFF);
+    send_buffer(&display_buffer);
+}
+
+fn draw_pixel(x: u8, y: u8) void {
+    const byte_index: u8 = x + (y / 8) * 128;
+    const bit_index: u8 = y % 8;
+
+    display_buffer[byte_index] |= (@as(u8, 1) << @intCast(bit_index));
 }
