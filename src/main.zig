@@ -2,53 +2,27 @@ const microzig = @import("microzig");
 
 const gpiob = microzig.chip.peripherals.GPIOB;
 const gpioc = microzig.chip.peripherals.GPIOC;
-const rcc = microzig.chip.peripherals.RCC;
+// const rcc = microzig.chip.peripherals.RCC;
 const i2c = microzig.chip.peripherals.I2C1;
-const flash = microzig.chip.peripherals.FLASH;
+// const flash = microzig.chip.peripherals.FLASH;
+
+const hal = @import("hal/hal.zig");
 
 var display_buffer: [1024]u8 = @splat(0x00);
 
 pub fn main() !void {
-    // setup clock
-    flash.ACR.write(
-        .{
-            .LATENCY = .WS3,
-            .PRFTEN = 0,
-            .ICEN = 0,
-            .DCEN = 0,
-            .ICRST = 0,
-            .DCRST = 0,
-        },
-    );
+    const flash = hal.Flash;
+    const rcc = hal.RCC;
 
-    rcc.PLLCFGR.write(
-        .{
-            .PLLM = .Div16,
-            .PLLN = .Mul192,
-            .PLLP = .Div2,
-            .PLLSRC = .HSI,
-            .PLLQ = .Div4,
-            .PLLR = .Div4,
-        },
-    );
+    flash.set_latency();
 
-    while (rcc.CR.read().HSIRDY == 0) {}
+    rcc.set_up_clock_speed();
 
-    rcc.CR.modify_one("PLLON", 1);
+    flash.clear_cache();
+    flash.enable_cache();
 
-    while (rcc.CR.read().PLLRDY == 0) {}
-
-    rcc.CFGR.modify_one("SW", .PLL1_P);
-
-    while (rcc.CFGR.read().SWS != .PLL1_P) {}
-
-    // gpio c
-    rcc.AHB1ENR.modify(
-        .{
-            .GPIOBEN = 1,
-            .GPIOCEN = 1,
-        },
-    );
+    rcc.enable_AHB1();
+    rcc.enable_APB1();
 
     gpioc.MODER.modify_one("MODER[13]", .Output);
     gpioc.OTYPER.modify_one("OT[13]", .PushPull);
@@ -70,7 +44,6 @@ pub fn main() !void {
 
     // i2c
     i2c.CR1.modify_one("PE", 0);
-    rcc.APB1ENR.modify_one("I2C1EN", 1);
     i2c.CR2.modify_one("FREQ", 50);
     i2c.CCR.modify_one("CCR", 250);
     i2c.TRISE.modify_one("TRISE", 51);
@@ -83,14 +56,82 @@ pub fn main() !void {
 
     init_display();
 
-    fill_display();
+    // fill_display();
     clear_display();
 
-    for (15..120) |x| {
-        for (32..40) |y| {
-            draw_pixel(@intCast(x), @intCast(y));
-        }
-    }
+    // for (100..120) |x| {
+    //     for (32..40) |y| {
+    //         draw_pixel(@intCast(x), @intCast(y));
+    //     }
+    // }
+    // send_buffer(&display_buffer);
+
+    // blink(2, 16_000_000);
+
+    // for (10..60) |x| {
+    //     for (50..63) |y| {
+    //         draw_pixel(@intCast(x), @intCast(y));
+    //     }
+    // }
+    // send_buffer(&display_buffer);
+
+    // draw_pixel(0, 0);
+    // draw_pixel(63, 0);
+    // draw_pixel(127, 0);
+    // draw_pixel(0, 3);
+    // draw_pixel(63, 3);
+    // draw_pixel(127, 3);
+    // draw_pixel(0, 7);
+    // draw_pixel(63, 7);
+    // draw_pixel(127, 7);
+    // draw_pixel(0, 10);
+    // draw_pixel(63, 10);
+    // draw_pixel(127, 10);
+    // draw_pixel(0, 13);
+    // draw_pixel(63, 13);
+    // draw_pixel(127, 13);
+    // draw_pixel(0, 17);
+    // draw_pixel(63, 17);
+    // draw_pixel(127, 17);
+
+    // // var x: u8 = 0;
+    // for (0..127) |y| {
+    //     delay(8_000_000);
+    //     draw_pixel(0, @intCast(y));
+    //     send_buffer(&display_buffer);
+    //     // if (y % 16 == 0) {
+    //     //     x += 1;
+    //     //     // clear_display();
+    //     // }
+    // }
+
+    // display_buffer[1023] = 0b10000001;
+    // display_buffer[1020] = 0xFF;
+    // display_buffer[1017] = 0xFF;
+    // display_buffer[1014] = 0xFF;
+    // display_buffer[1011] = 0xFF;
+    // display_buffer[1009] = 0xFF;
+    // display_buffer[1006] = 0xFF;
+    // display_buffer[1003] = 0xFF;
+    // display_buffer[1000] = 0xFF;
+    // send_buffer(&display_buffer);
+
+    // blink(1, 16_000_000);
+
+    // display_buffer[0] = 0b10000001;
+    // display_buffer[3] = 0xFF;
+    // display_buffer[6] = 0xFF;
+    // display_buffer[9] = 0xFF;
+    // display_buffer[11] = 0xFF;
+    // display_buffer[14] = 0xFF;
+    // display_buffer[17] = 0xFF;
+    // display_buffer[20] = 0xFF;
+    // display_buffer[23] = 0xFF;
+    // send_buffer(&display_buffer);
+
+    display_buffer[0] = 0xFF;
+    display_buffer[512] = 0xFF;
+    display_buffer[700] = 0xFF;
     send_buffer(&display_buffer);
 
     while (true) {
@@ -124,6 +165,7 @@ fn init_display() void {
     _ = i2c.SR2.read();
 
     const commands = [_]u8{ 0x00, 0x8D, 0x14, 0xAF, 0x20, 0x00, 0x21, 0x00, 127, 0x22, 0x00, 7, 0xA8, 0x38 };
+    // const commands = [_]u8{ 0x00, 0x8D, 0x14, 0xAF, 0x20, 0x00, 0x21, 0x00, 127, 0x22, 0x00, 7 };
     for (commands) |cmd| {
         while (i2c.SR1.read().TXE == 0) {}
         i2c.DR.write(.{ .DR = cmd });
@@ -174,8 +216,8 @@ fn fill_display() void {
 }
 
 fn draw_pixel(x: u8, y: u8) void {
-    const byte_index: u8 = x + (y / 8) * 128;
-    const bit_index: u8 = y % 8;
+    const byte_index: u16 = x + ((y / 8) * 128);
+    const bit_index: u16 = y % 8;
 
     display_buffer[byte_index] |= (@as(u8, 1) << @intCast(bit_index));
 }
