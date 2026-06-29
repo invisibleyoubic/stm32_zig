@@ -16,8 +16,5 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/main.zig"),
     });
 
-    mb.install_firmware(firmware, .{});
     mb.install_firmware(firmware, .{ .format = .elf });
-
-    // TODO: add objcopy
 }
