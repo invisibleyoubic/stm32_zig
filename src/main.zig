@@ -7,6 +7,7 @@ const i2c = microzig.chip.peripherals.I2C1;
 // const flash = microzig.chip.peripherals.FLASH;
 
 const hal = @import("hal/hal.zig");
+const display = @import("hal/display.zig");
 
 var display_buffer: [1024]u8 = @splat(0x00);
 
@@ -54,36 +55,78 @@ pub fn main() !void {
         asm volatile ("" ::: .{ .memory = true });
     }
 
+    // TODO: move to Display
     init_display();
 
-    // fill_display();
-    clear_display();
+    var i2c_display = display.Display.init(&display_buffer, 128, 64);
+
+    // set test
+
+    i2c_display.clear();
 
     for (0..64) |y| {
-        draw_pixel(0, @intCast(y));
-        draw_pixel(127, @intCast(y));
+        i2c_display.setPixel(0, @intCast(y));
+        i2c_display.setPixel(127, @intCast(y));
     }
 
     for (0..128) |x| {
-        draw_pixel(@intCast(x), 0);
-        draw_pixel(@intCast(x), 63);
+        i2c_display.setPixel(@intCast(x), 0);
+        i2c_display.setPixel(@intCast(x), 63);
     }
 
     send_buffer(&display_buffer);
     blink(1, 16_000_000);
 
     for (0..64) |y| {
-        draw_pixel(@intCast(y * 2), @intCast(y));
+        i2c_display.setPixel(@intCast(y * 2), @intCast(y));
     }
     send_buffer(&display_buffer);
     blink(1, 16_000_000);
 
     for (0..64) |y| {
-        draw_pixel(@intCast(127 - y * 2), @intCast(y));
+        i2c_display.setPixel(@intCast(127 - y * 2), @intCast(y));
     }
     send_buffer(&display_buffer);
     blink(1, 16_000_000);
 
+    // unset test
+
+    i2c_display.fill();
+
+    for (0..64) |y| {
+        i2c_display.unsetPixel(0, @intCast(y));
+        i2c_display.unsetPixel(127, @intCast(y));
+    }
+
+    for (0..128) |x| {
+        i2c_display.unsetPixel(@intCast(x), 0);
+        i2c_display.unsetPixel(@intCast(x), 63);
+    }
+
+    send_buffer(&display_buffer);
+    blink(1, 16_000_000);
+
+    for (0..64) |y| {
+        i2c_display.unsetPixel(@intCast(y * 2), @intCast(y));
+    }
+    send_buffer(&display_buffer);
+    blink(1, 16_000_000);
+
+    for (0..64) |y| {
+        i2c_display.unsetPixel(@intCast(127 - y * 2), @intCast(y));
+    }
+    send_buffer(&display_buffer);
+    blink(1, 16_000_000);
+
+    i2c_display.clear();
+    send_buffer(&display_buffer);
+    blink(1, 16_000_000);
+
+    i2c_display.fill();
+    send_buffer(&display_buffer);
+    blink(1, 16_000_000);
+
+    // end
     while (true) {
         blink(1, 16_000_000);
     }
@@ -152,20 +195,4 @@ fn send_buffer(buffer: []const u8) void {
         break;
     }
     i2c.CR1.modify_one("STOP", 1);
-}
-
-fn clear_display() void {
-    display_buffer = @splat(0x00);
-    send_buffer(&display_buffer);
-}
-
-fn fill_display() void {
-    display_buffer = @splat(0xFF);
-    send_buffer(&display_buffer);
-}
-
-fn draw_pixel(x: u8, y: u8) void {
-    const bit_offset: u8 = y % 8;
-    const byte_index: u16 = (@as(u16, y / 8) * 128) + x;
-    display_buffer[byte_index] |= (@as(u8, 1) << @intCast(bit_offset));
 }
