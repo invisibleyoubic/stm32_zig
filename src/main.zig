@@ -60,73 +60,26 @@ pub fn main() !void {
 
     var i2c_display = display.Display.init(&display_buffer, 128, 64);
 
-    // set test
-
     i2c_display.clear();
 
-    for (0..64) |y| {
-        i2c_display.setPixel(0, @intCast(y));
-        i2c_display.setPixel(127, @intCast(y));
-    }
-
-    for (0..128) |x| {
-        i2c_display.setPixel(@intCast(x), 0);
-        i2c_display.setPixel(@intCast(x), 63);
-    }
+    i2c_display.drawLine(0, 0, 127, 63);
+    i2c_display.drawLine(127, 0, 0, 63);
 
     send_buffer(&display_buffer);
     blink(1, 16_000_000);
 
-    for (0..64) |y| {
-        i2c_display.setPixel(@intCast(y * 2), @intCast(y));
-    }
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
-
-    for (0..64) |y| {
-        i2c_display.setPixel(@intCast(127 - y * 2), @intCast(y));
-    }
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
-
-    // unset test
-
-    i2c_display.fill();
-
-    for (0..64) |y| {
-        i2c_display.unsetPixel(0, @intCast(y));
-        i2c_display.unsetPixel(127, @intCast(y));
-    }
-
-    for (0..128) |x| {
-        i2c_display.unsetPixel(@intCast(x), 0);
-        i2c_display.unsetPixel(@intCast(x), 63);
-    }
+    i2c_display.drawLine(0, 0, 0, 63);
+    i2c_display.drawLine(127, 0, 127, 63);
 
     send_buffer(&display_buffer);
     blink(1, 16_000_000);
 
-    for (0..64) |y| {
-        i2c_display.unsetPixel(@intCast(y * 2), @intCast(y));
-    }
+    i2c_display.drawLine(0, 0, 15, 45);
+    i2c_display.drawLine(127, 0, 0, 10);
+
     send_buffer(&display_buffer);
     blink(1, 16_000_000);
 
-    for (0..64) |y| {
-        i2c_display.unsetPixel(@intCast(127 - y * 2), @intCast(y));
-    }
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
-
-    i2c_display.clear();
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
-
-    i2c_display.fill();
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
-
-    // end
     while (true) {
         blink(1, 16_000_000);
     }
@@ -172,6 +125,7 @@ fn init_display() void {
     i2c.CR1.modify_one("STOP", 1);
 }
 
+// TODO: move to display or i2c
 fn send_buffer(buffer: []const u8) void {
     i2c.CR1.modify_one("START", 1);
     while (i2c.SR1.read().START == 0) {}
