@@ -62,20 +62,24 @@ pub fn main() !void {
 
     i2c_display.clear();
 
-    i2c_display.drawLine(0, 0, 127, 63);
-    i2c_display.drawLine(127, 0, 0, 63);
+    // i2c_display.drawLine(0, 0, 127, 63);
+    // i2c_display.drawLine(127, 0, 0, 63);
 
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
+    // send_buffer(&display_buffer);
+    // blink(1, 16_000_000);
 
-    i2c_display.drawLine(0, 0, 0, 63);
-    i2c_display.drawLine(127, 0, 127, 63);
+    // i2c_display.drawLine(0, 0, 0, 63);
+    // i2c_display.drawLine(127, 0, 127, 63);
 
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
+    // send_buffer(&display_buffer);
+    // blink(1, 16_000_000);
 
-    i2c_display.drawLine(0, 0, 15, 45);
-    i2c_display.drawLine(127, 0, 0, 10);
+    // i2c_display.drawLine(0, 0, 15, 45);
+    // i2c_display.drawLine(127, 0, 0, 10);
+
+    i2c_display.drawCicrle(100, 31, 30);
+    i2c_display.drawCicrle(63, 31, 10);
+    i2c_display.drawCicrle(27, 31, 15);
 
     send_buffer(&display_buffer);
     blink(1, 16_000_000);

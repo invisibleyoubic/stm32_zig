@@ -75,4 +75,33 @@ pub const Display = struct {
             }
         }
     }
+
+    // Bresenham's circle algorithm
+    pub fn drawCicrle(self: *Display, x0_in: u16, y0_in: u16, r: u16) void {
+        var x: i16 = 0;
+        var y: i16 = @as(i16, @intCast(r));
+        var err: i16 = 3 - 2 * @as(i16, @intCast(r));
+
+        while (x <= y) {
+            drawCirclePlot(self, x0_in, y0_in, @intCast(x), @intCast(y));
+            if (err >= 0) {
+                err = err + 4 * (x - y) + 10;
+                y -= 1;
+            } else {
+                err = err + 4 * x + 6;
+            }
+            x += 1;
+        }
+    }
+
+    fn drawCirclePlot(self: *Display, cx: u16, cy: u16, x: u16, y: u16) void {
+        self.setPixel(cx + x, cy + y);
+        self.setPixel(cx - x, cy + y);
+        self.setPixel(cx + x, cy - y);
+        self.setPixel(cx - x, cy - y);
+        self.setPixel(cx + y, cy + x);
+        self.setPixel(cx - y, cy + x);
+        self.setPixel(cx + y, cy - x);
+        self.setPixel(cx - y, cy - x);
+    }
 };
