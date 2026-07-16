@@ -94,7 +94,7 @@ pub const Display = struct {
         }
     }
 
-    fn drawCirclePlot(self: *Display, cx: u16, cy: u16, x: u16, y: u16) void {
+    inline fn drawCirclePlot(self: *Display, cx: u16, cy: u16, x: u16, y: u16) void {
         self.setPixel(cx + x, cy + y);
         self.setPixel(cx - x, cy + y);
         self.setPixel(cx + x, cy - y);
@@ -103,5 +103,69 @@ pub const Display = struct {
         self.setPixel(cx - y, cy + x);
         self.setPixel(cx + y, cy - x);
         self.setPixel(cx - y, cy - x);
+    }
+
+    // Bresenham's ellipse algorithm
+    pub fn drawEllipse(self: *Display, x0_in: u16, y0_in: u16, a_in: u16, b_in: u16) void {
+        const a: i32 = @intCast(a_in);
+        const b: i32 = @intCast(b_in);
+
+        var x: i32 = 0;
+        var y: i32 = b;
+
+        const a2: i32 = a * a;
+        const b2: i32 = b * b;
+
+        const two_a2: i32 = 2 * a2;
+        const two_b2: i32 = 2 * b2;
+
+        var px: i32 = 0;
+        var py: i32 = two_a2 * y;
+
+        // region 1
+        // original function : b2 - a2 * b + 0.25 * a2
+        // 4 - to get rid of 0.25
+        var p: i32 = 4 * b2 - 4 * a2 * b + a2;
+
+        while (px < py) {
+            self.drawEllipsePlot(x0_in, y0_in, @intCast(x), @intCast(y));
+
+            var delta_y: i32 = 0;
+            if (p >= 0) {
+                y -= 1;
+                py -= two_a2;
+                delta_y = py;
+            }
+
+            p += 4 * px + 6 * b2 - 4 * delta_y;
+            x += 1;
+            px += two_b2;
+        }
+
+        // region 2
+        // original formula: b2 * (x + 0.5)^2 + a2 * (y - 1)^2 - a2 * b2
+        p = b2 * (x * x + x) + a2 * (y - 1) * (y - 1) - a2 * b2;
+
+        while (y >= 0) {
+            self.drawEllipsePlot(x0_in, y0_in, @intCast(x), @intCast(y));
+
+            var delta_x: i32 = 0;
+            if (p < 0) {
+                x += 1;
+                px += two_b2;
+                delta_x = px;
+            }
+
+            y -= 1;
+            py -= two_a2;
+            p += a2 - py + delta_x;
+        }
+    }
+
+    inline fn drawEllipsePlot(self: *Display, cx: u16, cy: u16, x: u16, y: u16) void {
+        self.setPixel(cx + x, cy + y);
+        self.setPixel(cx - x, cy + y);
+        self.setPixel(cx + x, cy - y);
+        self.setPixel(cx - x, cy - y);
     }
 };

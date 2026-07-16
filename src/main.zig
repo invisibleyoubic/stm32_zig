@@ -77,9 +77,12 @@ pub fn main() !void {
     // i2c_display.drawLine(0, 0, 15, 45);
     // i2c_display.drawLine(127, 0, 0, 10);
 
-    i2c_display.drawCicrle(100, 31, 30);
-    i2c_display.drawCicrle(63, 31, 10);
-    i2c_display.drawCicrle(27, 31, 15);
+    // i2c_display.drawCicrle(100, 31, 30);
+    // i2c_display.drawCicrle(63, 31, 30);
+    // i2c_display.drawCicrle(27, 31, 15);
+
+    i2c_display.drawEllipse(63, 31, 30, 20);
+    i2c_display.drawEllipse(63, 31, 15, 30);
 
     send_buffer(&display_buffer);
     blink(1, 16_000_000);
