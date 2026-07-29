@@ -87,26 +87,51 @@ pub fn main() !void {
     // i2c_display.fillCicrle(63, 31, 30);
     // i2c_display.fillEllipse(63, 31, 15, 30);
 
-    i2c_display.drawEllipse(63, 31, 30, 20);
+    // i2c_display.drawEllipse(63, 31, 30, 20);
 
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
+    // send_buffer(&display_buffer);
+    // blink(1, 16_000_000);
 
-    i2c_display.fillEllipse(63, 31, 30, 20);
+    // i2c_display.fillEllipse(63, 31, 30, 20);
 
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
+    // send_buffer(&display_buffer);
+    // blink(1, 16_000_000);
 
+    // i2c_display.clear();
+    // i2c_display.drawCicrle(63, 31, 10);
+
+    // send_buffer(&display_buffer);
+    // blink(1, 16_000_000);
+
+    // i2c_display.fillCicrle(63, 31, 10);
+
+    // send_buffer(&display_buffer);
+    // blink(1, 16_000_000);
+
+    for (0..10) |i| {
+        i2c_display.setPixel(@intCast(i), 0);
+        i2c_display.drawDigit(@intCast(5 * i), 10, @intCast(i));
+        i2c_display.drawCicrle(@intCast(5 + 10 * i), 30, 5);
+        i2c_display.drawLine(@intCast(127 - i), 0, @intCast(127 - i), @intCast(15 - i));
+        send_buffer(&display_buffer);
+    }
+
+    blink(3, 8_000_000);
     i2c_display.clear();
-    i2c_display.drawCicrle(63, 31, 10);
 
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
-
-    i2c_display.fillCicrle(63, 31, 10);
-
-    send_buffer(&display_buffer);
-    blink(1, 16_000_000);
+    var code: u8 = 32;
+    var x: u16 = 0;
+    var y: u16 = 0;
+    while (code < 127) : (code += 1) {
+        i2c_display.drawChar(@intCast((5 * x)), @intCast((8 * y) + 1), code);
+        if (x + 2 > 24) {
+            x = 0;
+            y += 1;
+        } else {
+            x += 2;
+        }
+        send_buffer(&display_buffer);
+    }
 
     while (true) {
         blink(1, 16_000_000);

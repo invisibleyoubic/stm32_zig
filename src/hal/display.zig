@@ -1,4 +1,5 @@
 const std = @import("std");
+const font = @import("font.zig");
 
 pub const Display = struct {
     width: u16,
@@ -268,6 +269,50 @@ pub const Display = struct {
         } else {
             self.drawLine(0, @intCast(cy + y), @intCast(cx + x), @intCast(cy + y));
             self.drawLine(0, @intCast(cy - y), @intCast(cx + x), @intCast(cy - y));
+        }
+    }
+
+    pub fn drawDigit(self: *Display, x: u16, y: u16, digit: u8) void {
+        if (digit > 9)
+            return;
+
+        const data = font.font_5x7[16 + digit];
+        for (data, 0..) |bytes, column| {
+            var row: u16 = 0;
+            while (row < 8) : (row += 1) {
+                const mask = @as(u8, 1) << @intCast(row);
+                if ((bytes & mask) != 0) {
+                    self.setPixel(x + @as(u16, @intCast(column)), y + row);
+                }
+            }
+        }
+    }
+
+    pub fn drawChar(self: *Display, x: u16, y: u16, ch: u8) void {
+        if (ch < 32 or ch > 126) return;
+
+        const index = ch - 32;
+        const data = font.font_5x7[index];
+
+        for (data, 0..) |bytes, column| {
+            var row: u16 = 0;
+            while (row < 8) : (row += 1) {
+                const mask = @as(u8, 1) << @intCast(row);
+                if ((bytes & mask) != 0) {
+                    self.setPixel(x + @as(u16, @intCast(column)), y + row);
+                }
+            }
+        }
+    }
+
+    pub fn drawString(self: *Display, x: u16, y: u16, str: []const u8) void {
+        var cursor = x;
+
+        for (str) |ch| {
+            self.drawChar(cursor, y, ch);
+            // font size is 7x5
+            // TODO:
+            cursor += 6;
         }
     }
 };
