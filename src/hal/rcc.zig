@@ -3,8 +3,10 @@ const microzig = @import("microzig");
 const rcc = microzig.chip.peripherals.RCC;
 
 pub const RCC = struct {
-    // TODO: function argument with target frequency
+    // TODO: function argument with target frequency and source
     pub fn set_up_clock_speed() void {
+        rcc.CR.modify_one("PLLON", 0);
+
         // VCO = (HSI speed * (PLLN / PLLM)) = 16 * (192 / 16) = 192 MHz
         // VCO / PLLP = 192 / 2 = 96 MHz
         rcc.PLLCFGR.write(
@@ -23,6 +25,8 @@ pub const RCC = struct {
         while (rcc.CR.read().PLLRDY == 0) {}
         rcc.CFGR.modify_one("SW", .PLL1_P);
         while (rcc.CFGR.read().SWS != .PLL1_P) {}
+        rcc.CFGR.modify_one("PPRE1", .Div2);
+        rcc.CFGR.modify_one("PPRE2", .Div1);
     }
 
     // TODO: specify peripheral to enable

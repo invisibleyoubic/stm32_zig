@@ -2,12 +2,9 @@ const microzig = @import("microzig");
 
 const gpiob = microzig.chip.peripherals.GPIOB;
 const gpioc = microzig.chip.peripherals.GPIOC;
-// const rcc = microzig.chip.peripherals.RCC;
 const i2c = microzig.chip.peripherals.I2C1;
-// const flash = microzig.chip.peripherals.FLASH;
 
 const hal = @import("hal/hal.zig");
-const display = @import("hal/display.zig");
 
 var display_buffer: [1024]u8 = @splat(0x00);
 
@@ -24,6 +21,8 @@ pub fn main() !void {
 
     rcc.enable_AHB1();
     rcc.enable_APB1();
+
+    hal.Timer.init();
 
     gpioc.MODER.modify_one("MODER[13]", .Output);
     gpioc.OTYPER.modify_one("OT[13]", .PushPull);
@@ -50,15 +49,12 @@ pub fn main() !void {
     i2c.TRISE.modify_one("TRISE", 51);
     i2c.CR1.modify_one("PE", 1);
 
-    var wait: u32 = 0;
-    while (wait < 16_000_000 * 2) : (wait += 1) {
-        asm volatile ("" ::: .{ .memory = true });
-    }
+    hal.Timer.delay(3);
 
     // TODO: move to Display
     init_display();
 
-    var i2c_display = display.Display.init(&display_buffer, 128, 64);
+    var i2c_display = hal.Display.init(&display_buffer, 128, 64);
 
     i2c_display.clear();
 
@@ -66,13 +62,13 @@ pub fn main() !void {
     // i2c_display.drawLine(127, 0, 0, 63);
 
     // send_buffer(&display_buffer);
-    // blink(1, 16_000_000);
+    // blink(1, 1);
 
     // i2c_display.drawLine(0, 0, 0, 63);
     // i2c_display.drawLine(127, 0, 127, 63);
 
     // send_buffer(&display_buffer);
-    // blink(1, 16_000_000);
+    // blink(1, 1);
 
     // i2c_display.drawLine(0, 0, 15, 45);
     // i2c_display.drawLine(127, 0, 0, 10);
@@ -90,23 +86,23 @@ pub fn main() !void {
     // i2c_display.drawEllipse(63, 31, 30, 20);
 
     // send_buffer(&display_buffer);
-    // blink(1, 16_000_000);
+    // blink(1, 1);
 
     // i2c_display.fillEllipse(63, 31, 30, 20);
 
     // send_buffer(&display_buffer);
-    // blink(1, 16_000_000);
+    // blink(1, 1);
 
     // i2c_display.clear();
     // i2c_display.drawCicrle(63, 31, 10);
 
     // send_buffer(&display_buffer);
-    // blink(1, 16_000_000);
+    // blink(1, 1);
 
     // i2c_display.fillCicrle(63, 31, 10);
 
     // send_buffer(&display_buffer);
-    // blink(1, 16_000_000);
+    // blink(1, 1);
 
     for (0..10) |i| {
         i2c_display.setPixel(@intCast(i), 0);
@@ -116,7 +112,7 @@ pub fn main() !void {
         send_buffer(&display_buffer);
     }
 
-    blink(3, 8_000_000);
+    blink(3, 500);
     i2c_display.clear();
 
     var code: u8 = 32;
@@ -134,14 +130,7 @@ pub fn main() !void {
     }
 
     while (true) {
-        blink(1, 16_000_000);
-    }
-}
-
-fn delay(cycles: u32) void {
-    var i: u32 = 0;
-    while (i < cycles) : (i += 1) {
-        asm volatile ("" ::: .{ .memory = true });
+        blink(1, 1000);
     }
 }
 
@@ -149,9 +138,9 @@ inline fn blink(count: u32, del: u32) void {
     var i: u32 = 0;
     while (i < count) : (i += 1) {
         gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
-        delay(del);
+        hal.Timer.delay(del);
         gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
-        delay(del);
+        hal.Timer.delay(del);
     }
 }
 
