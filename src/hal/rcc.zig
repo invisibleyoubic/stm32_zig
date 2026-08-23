@@ -33,6 +33,7 @@ pub const RCC = struct {
     pub fn enable_AHB1() void {
         rcc.AHB1ENR.modify(
             .{
+                .GPIOAEN = 1,
                 .GPIOBEN = 1,
                 .GPIOCEN = 1,
             },
@@ -46,5 +47,11 @@ pub const RCC = struct {
                 .I2C1EN = 1,
             },
         );
+    }
+
+    pub fn enable_APB2() void {
+        rcc.APB2ENR.modify(.{
+            .SYSCFGEN = 1,
+        });
     }
 };
