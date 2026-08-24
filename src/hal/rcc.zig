@@ -52,6 +52,7 @@ pub const RCC = struct {
     pub fn enable_APB2() void {
         rcc.APB2ENR.modify(.{
             .SYSCFGEN = 1,
+            .TIM9EN = 1,
         });
     }
 };

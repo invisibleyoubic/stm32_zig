@@ -6,6 +6,7 @@ const gpioc = microzig.chip.peripherals.GPIOC;
 const i2c = microzig.chip.peripherals.I2C1;
 const syscfg = microzig.chip.peripherals.SYSCFG;
 const exti = microzig.chip.peripherals.EXTI;
+const tim9 = microzig.chip.peripherals.TIM9;
 
 const hal = @import("hal/hal.zig");
 
@@ -18,6 +19,7 @@ pub const std_options = microzig.std_options(.{});
 pub const microzig_options: microzig.Options = .{
     .interrupts = .{
         .EXTI0 = .{ .c = EXTI0_handler },
+        .TIM1_BRK_TIM9 = .{ .c = TIM9_handler },
     },
 };
 
@@ -25,14 +27,27 @@ var is_available: bool = false;
 pub fn EXTI0_handler() callconv(.c) void {
     if (exti.PR.read().@"LINE[0]" == 1) {
         exti.PR.write_raw(1);
+        // is_available = true;
+
+        // if (gpioa.IDR.read().@"IDR[0]" == .Low) {
+        //     if (gpioc.ODR.read().@"ODR[13]" == .Low) {
+        //         gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
+        //     } else {
+        //         gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
+        //     }
+        // }
+    }
+}
+
+pub fn TIM9_handler() callconv(.c) void {
+    if (tim9.SR.read().UIF == 1) {
+        tim9.SR.modify_one("UIF", 0);
         is_available = true;
 
-        if (gpioa.IDR.read().@"IDR[0]" == .Low) {
-            if (gpioc.ODR.read().@"ODR[13]" == .Low) {
-                gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
-            } else {
-                gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
-            }
+        if (gpioc.ODR.read().@"ODR[13]" == .Low) {
+            gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
+        } else {
+            gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
         }
     }
 }
@@ -99,8 +114,7 @@ pub fn main() !void {
         },
     );
 
-    microzig.cpu.peripherals.nvic.ISER[0] = (1 << 6);
-    microzig.cpu.interrupt.enable_interrupts();
+    microzig.interrupt.enable(.EXTI0);
     exti.PR.write_raw(1);
 
     // i2c
@@ -110,6 +124,22 @@ pub fn main() !void {
     i2c.TRISE.modify_one("TRISE", 51);
     i2c.CR1.modify_one("PE", 1);
 
+    // tim9
+    // ( psc + 1 * arr ) / fapb
+    tim9.PSC = 48000 - 1;
+    tim9.ARR.modify( // 1 sec
+        .{
+            .ARR = 2000 - 1,
+        },
+    );
+
+    tim9.DIER.modify(
+        .{
+            .UIE = 1,
+        },
+    );
+    microzig.interrupt.enable(.TIM1_BRK_TIM9);
+
     // TODO: move to Display
     init_display();
     blink(3, 500);
@@ -117,6 +147,12 @@ pub fn main() !void {
     var i2c_display = hal.Display.init(&display_buffer, 128, 64);
     i2c_display.clear();
     send_buffer(&display_buffer);
+
+    tim9.CR1.modify(
+        .{
+            .CEN = 1,
+        },
+    );
 
     var code: u8 = 32;
     var x: u16 = 0;
