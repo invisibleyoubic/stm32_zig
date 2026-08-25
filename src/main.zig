@@ -26,29 +26,28 @@ pub const microzig_options: microzig.Options = .{
 var is_available: bool = false;
 pub fn EXTI0_handler() callconv(.c) void {
     if (exti.PR.read().@"LINE[0]" == 1) {
+        exti.IMR.modify(.{ .@"LINE[0]" = 0 });
         exti.PR.write_raw(1);
-        // is_available = true;
-
-        // if (gpioa.IDR.read().@"IDR[0]" == .Low) {
-        //     if (gpioc.ODR.read().@"ODR[13]" == .Low) {
-        //         gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
-        //     } else {
-        //         gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
-        //     }
-        // }
+        tim9.CNT.modify(.{ .CNT = 0 });
+        tim9.CR1.modify(.{ .CEN = 1 });
     }
 }
 
 pub fn TIM9_handler() callconv(.c) void {
     if (tim9.SR.read().UIF == 1) {
-        tim9.SR.modify_one("UIF", 0);
-        is_available = true;
+        tim9.SR.modify(.{ .UIF = 0 });
+        tim9.CR1.modify(.{ .CEN = 0 });
 
-        if (gpioc.ODR.read().@"ODR[13]" == .Low) {
-            gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
-        } else {
-            gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
+        if (gpioa.IDR.read().@"IDR[0]" == .Low) {
+            is_available = true;
+            // if (gpioc.ODR.read().@"ODR[13]" == .Low) {
+            //     gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
+            // } else {
+            //     gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
+            // }
         }
+        exti.PR.write_raw(1);
+        exti.IMR.modify(.{ .@"LINE[0]" = 1 });
     }
 }
 
@@ -69,53 +68,32 @@ pub fn main() !void {
 
     hal.Timer.init();
 
-    gpioa.MODER.modify(
-        .{
-            .@"MODER[0]" = .Input,
-        },
-    );
-    gpioa.PUPDR.modify(
-        .{
-            .@"PUPDR[0]" = .PullUp,
-        },
-    );
+    gpioa.MODER.modify(.{ .@"MODER[0]" = .Input });
+    gpioa.PUPDR.modify(.{ .@"PUPDR[0]" = .PullUp });
 
     gpioc.MODER.modify_one("MODER[13]", .Output);
     gpioc.OTYPER.modify_one("OT[13]", .PushPull);
 
     // gpio b
-    gpiob.MODER.modify(
-        .{
-            .@"MODER[6]" = .Alternate,
-            .@"MODER[7]" = .Alternate,
-        },
-    );
-
-    gpiob.AFR[0].modify(
-        .{
-            .@"AFR[6]" = 0b0100,
-            .@"AFR[7]" = 0b0100,
-        },
-    );
-
-    // interrupt for user button
-    syscfg.EXTICR[0].modify(.{
-        .@"EXTI[0]" = 0b0000,
+    gpiob.MODER.modify(.{
+        .@"MODER[6]" = .Alternate,
+        .@"MODER[7]" = .Alternate,
     });
 
-    exti.IMR.modify(
-        .{
-            .@"LINE[0]" = 1,
-        },
-    );
-    exti.FTSR.modify(
-        .{
-            .@"LINE[0]" = 1,
-        },
-    );
+    gpiob.AFR[0].modify(.{
+        .@"AFR[6]" = 0b0100,
+        .@"AFR[7]" = 0b0100,
+    });
 
-    microzig.interrupt.enable(.EXTI0);
+    // interrupt for user button
+    syscfg.EXTICR[0].modify(.{ .@"EXTI[0]" = 0b0000 });
+
+    exti.IMR.modify(.{ .@"LINE[0]" = 1 });
+    exti.FTSR.modify(.{ .@"LINE[0]" = 1 });
+    exti.RTSR.modify(.{ .@"LINE[0]" = 0 });
+
     exti.PR.write_raw(1);
+    microzig.interrupt.enable(.EXTI0);
 
     // i2c
     i2c.CR1.modify_one("PE", 0);
@@ -126,18 +104,10 @@ pub fn main() !void {
 
     // tim9
     // ( psc + 1 * arr ) / fapb
-    tim9.PSC = 48000 - 1;
-    tim9.ARR.modify( // 1 sec
-        .{
-            .ARR = 2000 - 1,
-        },
-    );
+    tim9.PSC = 2000 - 1;
+    tim9.ARR.modify(.{ .ARR = 1440 });
 
-    tim9.DIER.modify(
-        .{
-            .UIE = 1,
-        },
-    );
+    tim9.DIER.modify(.{ .UIE = 1 });
     microzig.interrupt.enable(.TIM1_BRK_TIM9);
 
     // TODO: move to Display
@@ -147,12 +117,6 @@ pub fn main() !void {
     var i2c_display = hal.Display.init(&display_buffer, 128, 64);
     i2c_display.clear();
     send_buffer(&display_buffer);
-
-    tim9.CR1.modify(
-        .{
-            .CEN = 1,
-        },
-    );
 
     var code: u8 = 32;
     var x: u16 = 0;
@@ -177,7 +141,8 @@ pub fn main() !void {
     }
 
     while (true) {
-        blink(1, 1000);
+        // blink(1, 1000);
+        microzig.cpu.wfi();
     }
 }
 

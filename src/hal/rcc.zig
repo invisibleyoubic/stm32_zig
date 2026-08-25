@@ -9,16 +9,14 @@ pub const RCC = struct {
 
         // VCO = (HSI speed * (PLLN / PLLM)) = 16 * (192 / 16) = 192 MHz
         // VCO / PLLP = 192 / 2 = 96 MHz
-        rcc.PLLCFGR.write(
-            .{
-                .PLLM = .Div16,
-                .PLLN = .Mul192,
-                .PLLP = .Div2,
-                .PLLSRC = .HSI, // 16 MHz
-                .PLLQ = .Div4,
-                .PLLR = .Div4,
-            },
-        );
+        rcc.PLLCFGR.write(.{
+            .PLLM = .Div16,
+            .PLLN = .Mul192,
+            .PLLP = .Div2,
+            .PLLSRC = .HSI, // 16 MHz
+            .PLLQ = .Div4,
+            .PLLR = .Div4,
+        });
 
         while (rcc.CR.read().HSIRDY == 0) {}
         rcc.CR.modify_one("PLLON", 1);
@@ -31,22 +29,18 @@ pub const RCC = struct {
 
     // TODO: specify peripheral to enable
     pub fn enable_AHB1() void {
-        rcc.AHB1ENR.modify(
-            .{
-                .GPIOAEN = 1,
-                .GPIOBEN = 1,
-                .GPIOCEN = 1,
-            },
-        );
+        rcc.AHB1ENR.modify(.{
+            .GPIOAEN = 1,
+            .GPIOBEN = 1,
+            .GPIOCEN = 1,
+        });
     }
 
     // TODO: specify peripheral to enable
     pub fn enable_APB1() void {
-        rcc.APB1ENR.modify(
-            .{
-                .I2C1EN = 1,
-            },
-        );
+        rcc.APB1ENR.modify(.{
+            .I2C1EN = 1,
+        });
     }
 
     pub fn enable_APB2() void {

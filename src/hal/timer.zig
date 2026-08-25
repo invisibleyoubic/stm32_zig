@@ -6,14 +6,12 @@ pub const Timer = struct {
     // TODO: specify HSI or HSE
     pub fn init() void {
         sysTick.LOAD.modify_one("RELOAD", 16_000 - 1);
-        sysTick.CTRL.write(
-            .{
-                .ENABLE = 1,
-                .CLKSOURCE = 1,
-                .TICKINT = 0,
-                .COUNTFLAG = 0,
-            },
-        );
+        sysTick.CTRL.write(.{
+            .ENABLE = 1,
+            .CLKSOURCE = 1,
+            .TICKINT = 0,
+            .COUNTFLAG = 0,
+        });
     }
 
     pub fn delay(ms: u32) void {
