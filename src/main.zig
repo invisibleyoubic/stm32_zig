@@ -26,28 +26,18 @@ pub const microzig_options: microzig.Options = .{
 var is_available: bool = false;
 pub fn EXTI0_handler() callconv(.c) void {
     if (exti.PR.read().@"LINE[0]" == 1) {
-        exti.IMR.modify(.{ .@"LINE[0]" = 0 });
         exti.PR.write_raw(1);
-        tim9.CNT.modify(.{ .CNT = 0 });
-        tim9.CR1.modify(.{ .CEN = 1 });
     }
 }
 
 pub fn TIM9_handler() callconv(.c) void {
     if (tim9.SR.read().UIF == 1) {
         tim9.SR.modify(.{ .UIF = 0 });
-        tim9.CR1.modify(.{ .CEN = 0 });
-
-        if (gpioa.IDR.read().@"IDR[0]" == .Low) {
-            is_available = true;
-            // if (gpioc.ODR.read().@"ODR[13]" == .Low) {
-            //     gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
-            // } else {
-            //     gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
-            // }
-        }
-        exti.PR.write_raw(1);
-        exti.IMR.modify(.{ .@"LINE[0]" = 1 });
+        gpioc.ODR.modify(.{ .@"ODR[13]" = .High });
+    }
+    if (tim9.SR.read().@"CCIF[0]" == 1) {
+        tim9.SR.modify(.{ .@"CCIF[0]" = 0 });
+        gpioc.ODR.modify(.{ .@"ODR[13]" = .Low });
     }
 }
 
@@ -105,44 +95,30 @@ pub fn main() !void {
     // tim9
     // ( psc + 1 * arr ) / fapb
     tim9.PSC = 2000 - 1;
-    tim9.ARR.modify(.{ .ARR = 1440 });
+    tim9.ARR.modify(.{ .ARR = 960 });
 
-    tim9.DIER.modify(.{ .UIE = 1 });
+    tim9.DIER.modify(.{
+        .UIE = 1,
+        .@"CCIE[0]" = 1,
+    });
+    tim9.CNT.modify(.{ .CNT = 0 });
     microzig.interrupt.enable(.TIM1_BRK_TIM9);
 
-    // TODO: move to Display
-    init_display();
-    blink(3, 500);
-
-    var i2c_display = hal.Display.init(&display_buffer, 128, 64);
-    i2c_display.clear();
-    send_buffer(&display_buffer);
-
-    var code: u8 = 32;
-    var x: u16 = 0;
-    var y: u16 = 0;
-    while (code < 127) : (code += 1) {
-        while (true) {
-            microzig.cpu.wfi();
-            if (is_available) {
-                is_available = false;
-                break;
-            }
-        }
-
-        i2c_display.drawChar(@intCast((5 * x)), @intCast((8 * y) + 1), code);
-        if (x + 2 > 24) {
-            x = 0;
-            y += 1;
-        } else {
-            x += 2;
-        }
-        send_buffer(&display_buffer);
-    }
+    tim9.CR1.modify(.{ .CEN = 1 });
 
     while (true) {
         // blink(1, 1000);
         microzig.cpu.wfi();
+        for (0..tim9.ARR.read().ARR) |i| {
+            tim9.CCR[0].modify(.{ .CCR = @as(u16, @intCast(i)) });
+            hal.Timer.delay(2);
+        }
+        var i: u16 = tim9.ARR.read().ARR;
+        while (i >= 0) : (i -= 1) {
+            tim9.CCR[0].modify(.{ .CCR = @as(u16, @intCast(i)) });
+            hal.Timer.delay(2);
+            if (i == 0) break;
+        }
     }
 }
 
